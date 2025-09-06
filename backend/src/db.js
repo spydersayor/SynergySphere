@@ -1,41 +1,47 @@
-const { Pool } = require('pg');
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@db:5432/hackdb';
+// backend/src/db.js
+const { Pool } = require("pg");
 
-const pool = new Pool({
-  connectionString,
-});
+let pool;
 
-async function initDB() {
-  const maxRetries = 10;
-  const retryDelay = 3000; // 3 seconds
+const cfgFromEnv = () => {
+  if (process.env.DATABASE_URL) {
+    return { connectionString: process.env.DATABASE_URL };
+  }
+  return {
+    host: process.env.DB_HOST || "localhost",
+    port: Number(process.env.DB_PORT || 5432),
+    user: process.env.DB_USER || "postgres",
+    password: process.env.DB_PASSWORD || "postgres",
+    database: process.env.DB_NAME || "synergysphere",
+  };
+};
 
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function initDB(maxRetries = 10, delayMs = 1500) {
+  const config = cfgFromEnv();
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`Attempt ${attempt}: Connecting to the database...`);
-      await pool.query('SELECT 1'); // Test connection
-      console.log('Database connection successful!');
-      return pool; // Return the pool once connected
+      pool = new Pool(config);
+      await pool.query("SELECT 1");
+      console.log("✅ Database connection successful!");
+      return pool;
     } catch (err) {
-      console.error(`Attempt ${attempt} failed: ${err.message}`);
-      if (attempt === maxRetries) {
-        console.error('Max retries reached. Exiting...');
-        process.exit(1); // Exit the process if all retries fail
-      }
-      console.log(`Waiting ${retryDelay / 1000} seconds before retrying...`);
-      await new Promise((res) => setTimeout(res, retryDelay));
+      console.error("❌ DB connection failed:", err.message);
+      if (pool) try { await pool.end(); } catch {}
+      if (attempt === maxRetries) throw err;
+      await wait(delayMs);
     }
   }
 }
 
-// Optional: function to close the pool gracefully
 async function closeDB() {
-  await pool.end();
-  console.log('Database connection closed.');
+  if (pool) {
+    await pool.end();
+    console.log("Database connection closed.");
+  }
 }
 
-module.exports = {
-  pool,
-  initDB,
-  closeDB,
-};
+module.exports = { initDB, closeDB };

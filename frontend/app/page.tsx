@@ -11,6 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Users, Target, MessageSquare, BarChart3, CheckCircle, AlertCircle } from "lucide-react"
 
+// ✅ API base URL from env
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
@@ -31,14 +34,14 @@ export default function AuthPage() {
       let res
       if (activeTab === "signup") {
         // 🔹 Call signup API
-        res = await fetch("http://localhost:8000/api/auth/signup", {
+        res = await fetch(`${API_URL}/api/auth/signup`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password, name }),
         })
       } else {
         // 🔹 Call signin API
-        res = await fetch("http://localhost:8000/api/auth/signin", {
+        res = await fetch(`${API_URL}/api/auth/signin`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
@@ -47,7 +50,9 @@ export default function AuthPage() {
 
       const data = await res.json()
 
-      if (!res.ok) throw new Error(data.error || "Something went wrong")
+      if (!res.ok) {
+        throw new Error(data.error || `Request failed with status ${res.status}`)
+      }
 
       if (activeTab === "signup") {
         setMessage({ type: "success", text: "Account created successfully! Please sign in." })
