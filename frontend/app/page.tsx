@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -28,36 +27,41 @@ export default function AuthPage() {
     const password = formData.get("password") as string
     const name = formData.get("name") as string
 
-    setTimeout(() => {
-      setIsLoading(false)
+    try {
+      let res
+      if (activeTab === "signup") {
+        // 🔹 Call signup API
+        res = await fetch("http://localhost:8000/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, name }),
+        })
+      } else {
+        // 🔹 Call signin API
+        res = await fetch("http://localhost:8000/api/auth/signin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        })
+      }
+
+      const data = await res.json()
+
+      if (!res.ok) throw new Error(data.error || "Something went wrong")
 
       if (activeTab === "signup") {
-        setMessage({
-          type: "success",
-          text: `Account created successfully for ${email}! You can now sign in.`,
-        })
-        localStorage.setItem(
-          "synergysphere_user",
-          JSON.stringify({
-            email,
-            name: name || email.split("@")[0],
-            loginTime: new Date().toISOString(),
-          }),
-        )
+        setMessage({ type: "success", text: "Account created successfully! Please sign in." })
         setTimeout(() => {
           setActiveTab("signin")
           setMessage(null)
         }, 2000)
       } else {
-        setMessage({
-          type: "success",
-          text: "Welcome back! Redirecting to dashboard...",
-        })
+        setMessage({ type: "success", text: "Welcome back! Redirecting to dashboard..." })
         localStorage.setItem(
           "synergysphere_user",
           JSON.stringify({
             email,
-            name: name || email.split("@")[0],
+            name: data.name || email.split("@")[0],
             loginTime: new Date().toISOString(),
           }),
         )
@@ -65,7 +69,11 @@ export default function AuthPage() {
           router.push("/dashboard")
         }, 1500)
       }
-    }, 1000)
+    } catch (err: any) {
+      setMessage({ type: "error", text: err.message })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (

@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hackdb
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build: .
+    restart: always
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/hackdb
+      PORT: 8000
+    ports:
+      - "8000:8000"
+
+volumes:
+  db_data:
